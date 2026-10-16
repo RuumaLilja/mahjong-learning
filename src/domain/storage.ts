@@ -24,6 +24,13 @@ export function freshData(): SavedData {
       3: { attempts: 0, completed: 0, bestFirstTry: 0 },
       4: { attempts: 0, completed: 0, bestFirstTry: 0 },
       5: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      6: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      7: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      8: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      9: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      10: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      12: { attempts: 0, completed: 0, bestFirstTry: 0 },
+      11: { attempts: 0, completed: 0, bestFirstTry: 0 },
     },
   };
 }
@@ -32,7 +39,7 @@ export function loadData(): SavedData {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<SavedData> | null;
     if (value?.version === 1 && value.settings && value.stages && [1, 2, 3, 4, 5].every(id => value.stages?.[id as StageId])) {
-      return value as SavedData;
+      return { ...value, stages: { ...freshData().stages, ...value.stages } } as SavedData;
     }
   } catch {
     // Invalid or unavailable storage starts a new local profile.

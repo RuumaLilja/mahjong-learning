@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import type { DrillQuestion } from './domain/drills';
 import { createMemoryDeck, type MemoryCard } from './domain/memory';
 import { createRun, isCorrect, stages, type Question, type StageId } from './domain/quiz';
 import { clearRecords, loadData, saveData, type SavedData } from './domain/storage';
 import { tileById, tileUrl, tiles, type Tile, type TileId } from './domain/tiles';
 
 type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'records' | 'settings';
-type Feedback = 'correct' | 'wrong' | null;
+type Feedback = 'correct' | 'wrong' | 'revealed' | null;
 
 const readings: Record<string, string> = {
   萬子: 'マンズ', 筒子: 'ピンズ', 索子: 'ソーズ', 字牌: 'ジハイ',
@@ -37,9 +38,30 @@ function Button({ children, onClick, secondary = false, disabled = false }: { ch
   return <button className={`button ${secondary ? 'button-secondary' : 'button-primary'}`} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
+function UkeireDiagram({ question, helperNumbers }: { question: DrillQuestion; helperNumbers: boolean }) {
+  if (!question.comparison) return null;
+  const best = question.comparison.filter(row => question.accepted.includes(row.discard));
+  const others = question.comparison.filter(row => !question.accepted.includes(row.discard));
+  function rowView(row: NonNullable<DrillQuestion['comparison']>[number]) {
+    const correct = question.accepted.includes(row.discard);
+    return <div className={`ukeire-row ${correct ? 'ukeire-best' : ''}`} key={row.discard}>
+      <div className="ukeire-heading"><span className="ukeire-discard"><TileImage tile={tileById[row.discard]} helperNumber={helperNumbers} /><span>を切る</span></span><strong>{correct ? '正解 · ' : ''}合計 {row.copies}枚</strong></div>
+      <p className="ukeire-label">次に引くとテンパイへ進める牌 ↓</p>
+      <div className="ukeire-tiles">{row.tiles.map(tile => <div key={tile.id}><TileImage tile={tileById[tile.id]} helperNumber={helperNumbers} /><span>残り{tile.copies}枚</span></div>)}</div>
+    </div>;
+  }
+  return <section className="ukeire-diagram" aria-label="打牌ごとの受け入れ牌と残り枚数"><h2>牌で比べる受け入れ</h2>{best.map(rowView)}{others.length > 0 && <details><summary>ほかの打牌と比べる（{others.length}候補）</summary>{others.map(rowView)}</details>}</section>;
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [data, setData] = useState<SavedData>(loadData);
+  const [category, setCategory] = useState(0);
+  const categories = [
+    { title: '牌を覚える', ids: [1, 2, 4, 7], description: '図柄・数字・読み方の基礎から。' },
+    { title: '形を覚える', ids: [5, 6], description: '雀頭・刻子・順子と、あと1枚で完成する形。' },
+    { title: '待ち・何切る', ids: [9, 10, 12], description: '待ちを見つけ、テンパイにする打牌を練習。' },
+  ];
   const [stage, setStage] = useState<StageId>(1);
   const [questions, setQuestions] = useState<Question[]>(() => createRun(1));
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -58,14 +80,16 @@ export default function App() {
   const [guideFamily, setGuideFamily] = useState<Tile['family']>('萬子');
   const [resetOpen, setResetOpen] = useState(false);
   const question = questions[questionIndex];
+  const resolved = feedback === 'correct' || feedback === 'revealed';
+  const selectionLimit = Array.isArray(question.answer) ? question.answer.length : 1;
 
   useEffect(() => saveData(data), [data]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen, questionIndex]);
   useEffect(() => {
-    if (screen !== 'quiz' || !data.settings.showTime || feedback === 'correct') return;
+    if (screen !== 'quiz' || !data.settings.showTime || resolved) return;
     const timer = window.setInterval(() => setElapsedSeconds(Math.floor((Date.now() - questionStartedAt.current) / 1000)), 250);
     return () => window.clearInterval(timer);
-  }, [screen, questionIndex, data.settings.showTime, feedback]);
+  }, [screen, questionIndex, data.settings.showTime, feedback, resolved]);
 
   function startStage(id: StageId) {
     setStage(id);
@@ -83,9 +107,11 @@ export default function App() {
   }
 
   function choose(index: number) {
-    if (feedback === 'correct') return;
-    if (question.kind === 'group') {
-      setSelected(current => current.includes(index) ? current.filter(item => item !== index) : current.length < question.answer.length ? [...current, index] : current);
+    if (resolved) return;
+    if (selectionLimit > 1) {
+      setSelected(current => current.includes(index)
+        ? current.filter(item => item !== index)
+        : [...current, index].slice(-selectionLimit));
     } else {
       setSelected([index]);
     }
@@ -101,6 +127,19 @@ export default function App() {
       setFeedback('wrong');
       setFirstTry(false);
     }
+  }
+
+  function revealAnswer() {
+    const answers = question.kind === 'drill' ? [question.accepted[0]] : Array.isArray(question.answer) ? question.answer : [question.answer];
+    const indices: number[] = [];
+    for (const answer of answers) {
+      const index = question.choices.findIndex((choice, i) => choice === answer && !indices.includes(i));
+      if (index >= 0) indices.push(index);
+    }
+    setSelected(indices);
+    setFirstTry(false);
+    setFeedback('revealed');
+    setHintOpen(false);
   }
 
   function nextQuestion() {
@@ -193,32 +232,48 @@ export default function App() {
         <p className="eyebrow">STAGE SELECT</p>
         <h1>学ぶ内容を選ぶ</h1>
         <p className="muted">好きなステージから始められます。</p>
-        <div className="stage-list">{stages.map(item => <button className="stage-card" key={item.id} onClick={() => startStage(item.id)}>
-          <span className="stage-number">{item.id}</span>
+        <div className="category-tabs" aria-label="学習カテゴリ">{categories.map((item, index) => <button key={item.title} aria-pressed={category === index} className={category === index ? 'active' : ''} onClick={() => setCategory(index)}>{item.title}<small>{item.ids.length}レッスン</small></button>)}</div>
+        <p className="category-description">{categories[category].description}</p>
+        <div className="stage-list">{stages.filter(item => categories[category].ids.includes(item.id)).map((item, index) => <button className="stage-card" key={item.id} onClick={() => startStage(item.id)}>
+          <span className="stage-number">{index + 1}</span>
           <span className="stage-info"><strong><ReadingText text={item.title} enabled={data.settings.furigana} /></strong><small><ReadingText text={item.summary} enabled={data.settings.furigana} /></small></span>
           <span className="stage-record">{data.stages[item.id].bestFirstTry ? `${data.stages[item.id].bestFirstTry}/5` : '—'}</span>
         </button>)}</div>
       </section>}
 
       {screen === 'quiz' && <section className="page-section quiz-section">
-        <div className="progress-label">ステージ {stage} ・ {questionIndex + 1} / 5 {data.settings.showTime && <span>・ {elapsedSeconds}秒</span>}</div>
+        <div className="progress-label">{stageTitle} ・ {questionIndex + 1} / 5 {data.settings.showTime && <span>・ {elapsedSeconds}秒</span>}</div>
         <div className="progress-dots" aria-hidden="true">{[0, 1, 2, 3, 4].map(index => <span key={index} className={index <= questionIndex ? 'active' : ''} />)}</div>
         <h1><ReadingText text={question.kind === 'family' ? 'この牌の種類は？' : question.kind === 'number' ? 'この牌の数字は？' : question.kind === 'reading' ? 'この牌の読みは？' : question.prompt} enabled={data.settings.furigana} /></h1>
-        {'tile' in question && <div className="question-tile"><TileImage tile={tileById[question.tile]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct'} />{feedback === 'correct' && <TileReading tile={tileById[question.tile]} enabled={data.settings.furigana} />}</div>}
-        <p className="section-caption">{question.kind === 'group' ? `${question.answer.length}枚選択してください` : '答えを選択してください'}</p>
-        <div className={question.kind === 'group' ? 'tile-options' : question.kind === 'tileFromReading' ? 'tile-options tile-options-four' : 'text-options'}>
-          {question.choices.map((choice, index) => <button key={`${choice}-${index}`} className={`option ${selected.includes(index) ? 'selected' : ''}`} onClick={() => choose(index)} aria-pressed={selected.includes(index)}>
-            {question.kind === 'group' || question.kind === 'tileFromReading' ? <span className="tile-option-content"><TileImage tile={tileById[choice as TileId]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct' && selected.includes(index)} />{question.kind === 'group' && <TileReading tile={tileById[choice as TileId]} enabled={data.settings.furigana} />}</span> : <Term text={choice} enabled={data.settings.furigana} />}
+        {'tile' in question && <>
+          <div className="question-tile"><TileImage tile={tileById[question.tile]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct'} /></div>
+          <div className="question-tile-name" aria-live="polite">{feedback === 'correct' ? <TileReading tile={tileById[question.tile]} enabled={data.settings.furigana} /> : <span aria-hidden="true">　</span>}</div>
+        </>}
+        {question.kind === 'completeMeld' && <div className="question-pair" role="group" aria-label="組を作る2枚の牌">
+          {question.pair.map((id, index) => <div className="question-pair-tile" key={`${id}-${index}`}><TileImage tile={tileById[id]} helperNumber={data.settings.helperNumbers} /><TileReading tile={tileById[id]} enabled={data.settings.furigana} /></div>)}
+          <span className="question-pair-plus" aria-hidden="true">＋ ?</span>
+        </div>}
+        {question.kind === 'drill' && <>
+          <p className="drill-note">{question.note}</p>
+          <div className="hand-tiles" role="group" aria-label={`${question.hand.length}枚の手牌`}>{question.hand.map((id, index) => <TileImage key={`${id}-${index}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />)}</div>
+        </>}
+        <p className="section-caption">{question.kind === 'group' ? `${question.answer.length}枚選択してください` : question.kind === 'completeMeld' ? `組を作れる牌を${question.answer.length}種類すべて選んでください` : '答えを選択してください'}</p>
+        {selectionLimit > 1 && <p className="selection-help">選択中：{selected.length} / {selectionLimit}　選んだ牌はもう一度押すと解除できます。<br />{selectionLimit}つ選んだあとに別の牌を押すと、先に選んだ牌から入れ替わります。</p>}
+        <div className={question.kind === 'drill' ? `drill-options ${question.topic >= 10 ? 'discard-options' : ''}` : question.kind === 'group' ? 'tile-options' : question.kind === 'tileFromReading' || question.kind === 'completeMeld' ? 'tile-options tile-options-four' : 'text-options'}>
+          {question.choices.map((choice, index) => <button key={`${choice}-${index}`} className={`option ${selected.includes(index) ? 'selected' : ''} ${resolved && question.kind === 'drill' && question.accepted.includes(choice) ? 'correct-option' : ''}`} onClick={() => choose(index)} aria-pressed={selected.includes(index)}>
+            {question.kind === 'drill' ? <span className="drill-choice">{question.choiceTiles[index].length ? question.choiceTiles[index].map((id, i) => <TileImage key={`${id}-${i}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />) : choice}</span> : question.kind === 'group' || question.kind === 'tileFromReading' || question.kind === 'completeMeld' ? <span className="tile-option-content"><TileImage tile={tileById[choice as TileId]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct' && selected.includes(index)} />{(question.kind === 'group' || question.kind === 'completeMeld') && <TileReading tile={tileById[choice as TileId]} enabled={data.settings.furigana} />}</span> : <Term text={choice} enabled={data.settings.furigana} />}
+            {question.kind === 'drill' && question.topic >= 10 && <span className="answer-badge">{resolved && question.accepted.includes(choice) ? '正解' : ' '}</span>}
           </button>)}
         </div>
-        {feedback && <div className={`feedback ${feedback}`} role="status"><strong>{feedback === 'correct' ? '正解' : 'もう一度選んでください'}</strong>{feedback === 'correct' && <p><ReadingText text={question.explanation} enabled={data.settings.furigana} /></p>}</div>}
-        {hintOpen && !feedback && question.hint && <div className="hint">{question.hint}</div>}
         <div className="quiz-actions">
-          {feedback === 'correct' ? <Button onClick={nextQuestion}>{questionIndex === questions.length - 1 ? '結果を見る' : '次の問題へ'}　→</Button> : <>
-            {question.hint && <Button secondary onClick={() => setHintOpen(value => !value)}>ヒント</Button>}
-            <Button onClick={answer} disabled={!selected.length || (question.kind === 'group' && selected.length !== question.answer.length)}>回答する</Button>
-          </>}
+          {question.hint && <Button secondary disabled={resolved} onClick={() => setHintOpen(value => !value)}>ヒント</Button>}
+          {resolved ? <Button onClick={nextQuestion}>{questionIndex === questions.length - 1 ? '結果を見る' : '次の問題へ'}　→</Button> : <Button onClick={answer} disabled={selected.length !== selectionLimit}>回答する</Button>}
         </div>
+        <button className="reveal-button" disabled={resolved} onClick={revealAnswer}>答えを見る・スキップ</button>
+        {question.kind === 'drill' && resolved && question.example && <div className="answer-example"><p>{question.example.label}</p><div className="example-groups">{question.example.groups.map((group, index) => <div key={index}>{group.map((id, i) => <TileImage key={`${id}-${i}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />)}</div>)}</div></div>}
+        {hintOpen && !resolved && question.hint && <div className="hint">{question.hint}</div>}
+        {feedback && <div className={`feedback ${feedback}`} role="status"><strong>{feedback === 'correct' ? '正解' : feedback === 'revealed' ? '答えを確認（正解数には含めません）' : 'もう一度選んでください'}</strong>{resolved && <p><ReadingText text={question.explanation} enabled={data.settings.furigana} /></p>}</div>}
+        {resolved && question.kind === 'drill' && <UkeireDiagram question={question} helperNumbers={data.settings.helperNumbers} />}
       </section>}
 
       {screen === 'result' && <section className="page-section result-section">

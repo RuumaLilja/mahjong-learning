@@ -2,7 +2,7 @@ import { createServer } from 'vite';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 
-const vite = await createServer({ server: { middlewareMode: true, hmr: false }, appType: 'custom' });
+const vite = await createServer({ optimizeDeps: { noDiscovery: true, include: [] }, server: { middlewareMode: true, hmr: false }, appType: 'custom' });
 try {
   const { default: App } = await vite.ssrLoadModule('/src/App.tsx');
   const html = renderToString(React.createElement(App));

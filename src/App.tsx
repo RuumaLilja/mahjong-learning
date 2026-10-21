@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import Encyclopedia from './Encyclopedia';
 import type { DrillQuestion } from './domain/drills';
-import { createMemoryDeck, type MemoryCard } from './domain/memory';
+import { createMemoryDeck, type MemoryCard, type PairCount } from './domain/memory';
 import { createRun, isCorrect, stages, type Question, type StageId } from './domain/quiz';
 import { clearRecords, loadData, saveData, type SavedData } from './domain/storage';
 import { tileById, tileUrl, tiles, type Tile, type TileId } from './domain/tiles';
 
-type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'records' | 'settings';
+type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'encyclopedia' | 'records' | 'settings';
 type Feedback = 'correct' | 'wrong' | 'revealed' | null;
 
 const readings: Record<string, string> = {
@@ -72,19 +73,36 @@ export default function App() {
   const [hintOpen, setHintOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const questionStartedAt = useRef(Date.now());
-  const [pairCount, setPairCount] = useState<3 | 6>(6);
-  const [deck, setDeck] = useState<MemoryCard[]>(() => createMemoryDeck(6));
+  const [pairCount, setPairCount] = useState<PairCount>(12);
+  const [compactMemory, setCompactMemory] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 520px)').matches);
+  const [deck, setDeck] = useState<MemoryCard[]>(() => createMemoryDeck(12));
   const [turns, setTurns] = useState(0);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const memoryRun = useRef(0);
   const [guideFamily, setGuideFamily] = useState<Tile['family']>('萬子');
+  const [dictionaryReturn, setDictionaryReturn] = useState<Screen>('home');
   const [resetOpen, setResetOpen] = useState(false);
   const question = questions[questionIndex];
+  const memoryOptions: PairCount[] = compactMemory ? [6, 12] : [6, 12, 26];
   const resolved = feedback === 'correct' || feedback === 'revealed';
   const selectionLimit = Array.isArray(question.answer) ? question.answer.length : 1;
 
   useEffect(() => saveData(data), [data]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen, questionIndex]);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 520px)');
+    const update = () => setCompactMemory(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (!compactMemory || pairCount !== 26) return;
+    memoryRun.current += 1;
+    setPairCount(12);
+    setDeck(createMemoryDeck(12));
+    setTurns(0);
+    setMemoryBusy(false);
+  }, [compactMemory, pairCount]);
   useEffect(() => {
     if (screen !== 'quiz' || !data.settings.showTime || resolved) return;
     const timer = window.setInterval(() => setElapsedSeconds(Math.floor((Date.now() - questionStartedAt.current) / 1000)), 250);
@@ -161,10 +179,11 @@ export default function App() {
     setElapsedSeconds(0);
   }
 
-  function startMemory(count: 3 | 6 = pairCount) {
+  function startMemory(count: PairCount = pairCount) {
+    const availableCount = compactMemory && count === 26 ? 12 : count;
     memoryRun.current += 1;
-    setPairCount(count);
-    setDeck(createMemoryDeck(count));
+    setPairCount(availableCount);
+    setDeck(createMemoryDeck(availableCount));
     setTurns(0);
     setMemoryBusy(false);
     setScreen('memory');
@@ -194,18 +213,22 @@ export default function App() {
 
   function navigate(destination: Screen) {
     if (screen === 'memory') memoryRun.current += 1;
+    if (destination === 'encyclopedia') setDictionaryReturn(screen);
     setResetOpen(false);
     setScreen(destination);
   }
 
   const stageTitle = stages.find(item => item.id === stage)?.title ?? '';
+  const currentCategoryStages = categories.find(item => item.ids.includes(stage))?.ids ?? [];
+  const nextStage = stages.find(item => item.id === currentCategoryStages[currentCategoryStages.indexOf(stage) + 1]);
+  const suggestNextStage = firstTryScore >= 4;
   const familyTabs = ['萬子', '筒子', '索子', '字牌'] as const;
   const memoryComplete = deck.every(card => card.matched);
 
   return <div className="app-shell">
     <header className={`topbar ${screen === 'home' ? 'topbar-home' : ''}`}>
-      {screen !== 'home' ? <button className="plain-button" onClick={() => navigate(screen === 'quiz' || screen === 'result' ? 'stages' : 'home')}>‹ 戻る</button> : <span />}
-      <span className="topbar-title"><ReadingText text={screen === 'home' ? '' : screen === 'stages' ? 'ステージ選択' : screen === 'quiz' ? stageTitle : screen === 'result' ? 'ステージ結果' : screen === 'memory' ? '神経衰弱' : screen === 'guide' ? '牌一覧' : screen === 'records' ? '成績' : '設定'} enabled={data.settings.furigana} /></span>
+      {screen !== 'home' ? <button className="plain-button" onClick={() => navigate(screen === 'encyclopedia' ? dictionaryReturn : screen === 'quiz' || screen === 'result' ? 'stages' : 'home')}>‹ 戻る</button> : <span />}
+      <span className="topbar-title"><ReadingText text={screen === 'home' ? '' : screen === 'stages' ? 'ステージ選択' : screen === 'quiz' ? stageTitle : screen === 'result' ? 'ステージ結果' : screen === 'memory' ? '神経衰弱' : screen === 'guide' ? '牌一覧' : screen === 'encyclopedia' ? '麻雀辞典' : screen === 'records' ? '成績' : '設定'} enabled={data.settings.furigana} /></span>
       {screen === 'home' ? <button className="plain-button" onClick={() => navigate('settings')}><span className="gear-icon" aria-hidden="true">⚙</span>設定</button> : <span />}
     </header>
 
@@ -223,6 +246,7 @@ export default function App() {
           <div className="menu-grid">
             <button onClick={() => startMemory()}><span>神経衰弱</span></button>
             <button onClick={() => navigate('guide')}><span>牌一覧</span></button>
+            <button onClick={() => navigate('encyclopedia')}><span>麻雀辞典</span></button>
             <button onClick={() => navigate('records')}><span>成績</span></button>
           </div>
         </div>
@@ -243,6 +267,7 @@ export default function App() {
 
       {screen === 'quiz' && <section className="page-section quiz-section">
         <div className="progress-label">{stageTitle} ・ {questionIndex + 1} / 5 {data.settings.showTime && <span>・ {elapsedSeconds}秒</span>}</div>
+        <button className="dictionary-inline-link" onClick={() => navigate('encyclopedia')}>用語・役を辞典で見る</button>
         <div className="progress-dots" aria-hidden="true">{[0, 1, 2, 3, 4].map(index => <span key={index} className={index <= questionIndex ? 'active' : ''} />)}</div>
         <h1><ReadingText text={question.kind === 'family' ? 'この牌の種類は？' : question.kind === 'number' ? 'この牌の数字は？' : question.kind === 'reading' ? 'この牌の読みは？' : question.prompt} enabled={data.settings.furigana} /></h1>
         {'tile' in question && <>
@@ -280,16 +305,20 @@ export default function App() {
         <p className="eyebrow">STAGE COMPLETE</p><h1>ステージ完了</h1>
         <div className="result-score"><strong>{firstTryScore} / 5</strong><span>最初の回答で正解した数</span></div>
         <div className="info-panel"><strong>今回学んだ内容</strong><p>{stageTitle}</p></div>
-        <Button onClick={() => startStage(stage)}>もう一度遊ぶ</Button>
-        <Button secondary onClick={() => navigate('stages')}>ステージ選択へ</Button>
+        <p className="result-guidance">{suggestNextStage ? nextStage ? `いい調子です。次は「${nextStage.title}」に進めます。` : 'このカテゴリをひと通り終えました。' : '別の5問でもう少し練習してみましょう。'}</p>
+        {suggestNextStage
+          ? <><Button onClick={() => nextStage ? startStage(nextStage.id) : navigate('stages')}>{nextStage ? '次のレッスンへ　→' : 'ステージ選択へ　→'}</Button><Button secondary onClick={() => startStage(stage)}>もう5問練習する</Button></>
+          : <><Button onClick={() => startStage(stage)}>もう5問練習する</Button>{nextStage && <Button secondary onClick={() => startStage(nextStage.id)}>次のレッスンへ</Button>}</>}
+        {(!suggestNextStage || nextStage) && <button className="result-stage-link" onClick={() => navigate('stages')}>ステージ選択に戻る</button>}
       </section>}
 
-      {screen === 'memory' && <section className="page-section memory-section">
+      {screen === 'memory' && <section className={`page-section memory-section memory-section-${pairCount}`}>
         <h1>{memoryComplete ? 'すべてそろいました' : '同じ牌をそろえる'}</h1>
         <p className="muted">時間制限はありません。</p>
-        <div className="memory-toolbar"><span>組数</span><button className={pairCount === 3 ? 'active' : ''} onClick={() => startMemory(3)}>3組</button><button className={pairCount === 6 ? 'active' : ''} onClick={() => startMemory(6)}>6組</button></div>
+        <div className="memory-toolbar"><span>枚数を選ぶ</span><div className={`memory-levels ${compactMemory ? 'compact' : ''}`}>{memoryOptions.map(count => <button key={count} className={pairCount === count ? 'active' : ''} aria-pressed={pairCount === count} onClick={() => startMemory(count)}><strong>{count === 26 ? '最大' : `${count}組`}</strong><small>{count * 2}枚</small></button>)}</div>{compactMemory && <p className="memory-mobile-note">スマホでは24枚まで遊べます。</p>}</div>
+        {pairCount === 26 && <p className="memory-full-note">トランプと同じ52枚。34種類の牌から毎回26種類を選びます。</p>}
         <p className="memory-status">手数：{turns}　そろえた組：{deck.filter(card => card.matched).length / 2} / {pairCount}</p>
-        <div className="memory-grid">{deck.map(card => <button key={card.key} className={`memory-card ${card.matched ? 'matched' : ''}`} onClick={() => flipCard(card.key)} aria-label={card.faceUp || card.matched ? tileById[card.tile].label : '裏向きの牌'}>
+        <div className={`memory-grid memory-grid-${pairCount}`}>{deck.map((card, index) => <button key={card.key} className={`memory-card ${card.matched ? 'matched' : ''}`} onClick={() => flipCard(card.key)} aria-label={`${index + 1}番目、${card.faceUp || card.matched ? tileById[card.tile].label : '裏向きの牌'}`}>
           {card.faceUp || card.matched ? <TileImage tile={tileById[card.tile]} helperNumber={data.settings.helperNumbers} /> : <span className="tile-back" aria-hidden="true" />}
         </button>)}</div>
         {memoryComplete && <div className="info-panel">{turns}手で完成しました。</div>}
@@ -301,6 +330,8 @@ export default function App() {
         <div className="family-tabs">{familyTabs.map(family => <button key={family} className={guideFamily === family ? 'active' : ''} onClick={() => setGuideFamily(family)}><Term text={family} enabled={data.settings.furigana} /></button>)}</div>
         <div className="guide-grid">{tiles.filter(tile => tile.family === guideFamily).map(tile => <div className="guide-card" key={tile.id}><TileImage tile={tile} helperNumber={data.settings.helperNumbers} /><strong>{tile.label}</strong><TileReading tile={tile} enabled={data.settings.furigana} /></div>)}</div>
       </section>}
+
+      {screen === 'encyclopedia' && <Encyclopedia />}
 
       {screen === 'records' && <section className="page-section records-section">
         <p className="eyebrow">YOUR RECORD</p><h1>学習記録</h1>

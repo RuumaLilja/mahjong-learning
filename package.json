@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "check:content": "node scripts/check-content.mjs",
     "check:drills": "node scripts/check-drills.mjs",
     "check:render": "node scripts/check-render.mjs",
     "check:domain": "node scripts/check-domain.mjs"

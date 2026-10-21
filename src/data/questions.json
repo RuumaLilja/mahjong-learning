@@ -52,18 +52,18 @@
     {"id":"honor-read-white","kind":"reading","tile":"white"}
   ],
   "5": [
-    {"id":"pair-man1","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["man1","pin1","man1","sou1","man2"],"answer":["man1","man1"],"explanation":"同じ牌2枚の組は雀頭です。","hint":"種類と数字の両方が同じ牌を探します。"},
-    {"id":"pair-pin4","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["pin4","sou4","man4","pin4","pin5"],"answer":["pin4","pin4"],"explanation":"同じ牌2枚の組は雀頭です。","hint":"同じ数字でも種類が違えば別の牌です。"},
-    {"id":"pair-sou7","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["man7","sou7","pin7","sou8","sou7"],"answer":["sou7","sou7"],"explanation":"同じ牌2枚の組は雀頭です。","hint":"図柄が完全に同じ2枚を探します。"},
-    {"id":"pair-east","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["south","east","north","west","east"],"answer":["east","east"],"explanation":"同じ牌2枚の組は雀頭です。","hint":"字牌の文字を見比べます。"},
+    {"id":"pair-man1","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["man1","pin1","man1","sou1","man2"],"answer":["man1","man1"],"explanation":"同じ牌2枚の組は対子です。通常のアガリ形で頭になる対子を雀頭と呼びます。","hint":"種類と数字の両方が同じ牌を探します。"},
+    {"id":"pair-pin4","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["pin4","sou4","man4","pin4","pin5"],"answer":["pin4","pin4"],"explanation":"同じ牌2枚の組は対子です。通常のアガリ形で頭になる対子を雀頭と呼びます。","hint":"同じ数字でも種類が違えば別の牌です。"},
+    {"id":"pair-sou7","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["man7","sou7","pin7","sou8","sou7"],"answer":["sou7","sou7"],"explanation":"同じ牌2枚の組は対子です。通常のアガリ形で頭になる対子を雀頭と呼びます。","hint":"図柄が完全に同じ2枚を探します。"},
+    {"id":"pair-east","kind":"group","prompt":"同じ牌を2枚選ぶ","choices":["south","east","north","west","east"],"answer":["east","east"],"explanation":"同じ牌2枚の組は対子です。通常のアガリ形で頭になる対子を雀頭と呼びます。","hint":"字牌の文字を見比べます。"},
     {"id":"triplet-man3","kind":"group","prompt":"同じ牌を3枚選ぶ","choices":["man3","pin3","man3","man4","man3"],"answer":["man3","man3","man3"],"explanation":"同じ牌3枚の組は刻子です。","hint":"種類と数字が同じ3枚を探します。"},
     {"id":"triplet-pin6","kind":"group","prompt":"同じ牌を3枚選ぶ","choices":["pin6","pin6","sou6","man6","pin6"],"answer":["pin6","pin6","pin6"],"explanation":"同じ牌3枚の組は刻子です。","hint":"丸い図柄の数に注目します。"},
     {"id":"triplet-red","kind":"group","prompt":"同じ牌を3枚選ぶ","choices":["red","green","red","white","red"],"answer":["red","red","red"],"explanation":"同じ牌3枚の組は刻子です。","hint":"字牌の文字を見比べます。"},
     {"id":"triplet-sou2","kind":"group","prompt":"同じ牌を3枚選ぶ","choices":["sou2","man2","sou2","sou2","pin2"],"answer":["sou2","sou2","sou2"],"explanation":"同じ牌3枚の組は刻子です。","hint":"種類と数字の両方が同じ牌を探します。"},
-    {"id":"sequence-man234","kind":"group","prompt":"連続する数字を3枚選ぶ","choices":["man2","pin3","man3","sou4","man4"],"answer":["man2","man3","man4"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"同じ種類で数字が1つずつ増える3枚を探します。"},
-    {"id":"sequence-pin456","kind":"group","prompt":"連続する数字を3枚選ぶ","choices":["pin4","man5","pin5","sou6","pin6"],"answer":["pin4","pin5","pin6"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"種類もそろえる必要があります。"},
-    {"id":"sequence-sou678","kind":"group","prompt":"連続する数字を3枚選ぶ","choices":["sou6","man7","sou7","pin8","sou8"],"answer":["sou6","sou7","sou8"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"竹の図柄の牌を見比べます。"},
-    {"id":"sequence-man789","kind":"group","prompt":"連続する数字を3枚選ぶ","choices":["man7","sou8","man8","pin9","man9"],"answer":["man7","man8","man9"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"萬子の数字が連続する3枚を探します。"}
+    {"id":"sequence-man234","kind":"group","prompt":"同じ種類で連続する数字を3枚選ぶ","choices":["man2","pin3","man3","sou4","man4"],"answer":["man2","man3","man4"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"同じ種類で数字が1つずつ増える3枚を探します。"},
+    {"id":"sequence-pin456","kind":"group","prompt":"同じ種類で連続する数字を3枚選ぶ","choices":["pin4","man5","pin5","sou6","pin6"],"answer":["pin4","pin5","pin6"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"種類もそろえる必要があります。"},
+    {"id":"sequence-sou678","kind":"group","prompt":"同じ種類で連続する数字を3枚選ぶ","choices":["sou6","man7","sou7","pin8","sou8"],"answer":["sou6","sou7","sou8"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"竹の図柄の牌を見比べます。"},
+    {"id":"sequence-man789","kind":"group","prompt":"同じ種類で連続する数字を3枚選ぶ","choices":["man7","sou8","man8","pin9","man9"],"answer":["man7","man8","man9"],"explanation":"同じ種類で連続する数字3枚の組は順子です。","hint":"萬子の数字が連続する3枚を探します。"}
   ],
   "6": [
     {"id":"complete-man45","kind":"completeMeld","pattern":"twoWay","pair":["man4","man5"]},

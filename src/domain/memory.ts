@@ -1,5 +1,7 @@
 import { tiles, type TileId } from './tiles';
 
+export type PairCount = 6 | 12 | 26;
+
 export interface MemoryCard {
   key: string;
   tile: TileId;
@@ -7,7 +9,7 @@ export interface MemoryCard {
   matched: boolean;
 }
 
-export function createMemoryDeck(pairCount: 3 | 6, random: () => number = Math.random): MemoryCard[] {
+export function createMemoryDeck(pairCount: PairCount, random: () => number = Math.random): MemoryCard[] {
   const pool = [...tiles];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

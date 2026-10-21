@@ -45,7 +45,7 @@ export default function Encyclopedia() {
     if (section === 'yaku' && hanFilter !== 'すべて') {
       if (hanFilter === '3翻以上' ? !(entry.han?.startsWith('3翻') || entry.han?.startsWith('6翻')) : hanFilter === '役満' ? !entry.han?.includes('役満') : !entry.han?.startsWith(hanFilter)) return false;
     }
-    return `${entry.name} ${entry.reading} ${entry.summary}`.toLocaleLowerCase('ja').includes(normalizedQuery);
+    return `${entry.name} ${entry.reading} ${entry.summary} ${entry.detail ?? ''} ${entry.caption ?? ''}`.toLocaleLowerCase('ja').includes(normalizedQuery);
   });
 
   return <section className="page-section dictionary-section">

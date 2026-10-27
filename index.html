@@ -8,7 +8,7 @@
       try {
         if (JSON.parse(localStorage.getItem('mahjong-learning:v1') || 'null')?.settings?.theme === 'black') {
           document.documentElement.dataset.theme = 'black';
-          document.querySelector('meta[name="theme-color"]').content = '#20272c';
+          document.querySelector('meta[name="theme-color"]').content = '#1f1f1e';
         }
       } catch { /* Use the default theme when storage is unavailable. */ }
     </script>

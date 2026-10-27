@@ -8,6 +8,16 @@ import { tileById, tileUrl, tiles, type Tile, type TileId } from './domain/tiles
 
 type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'encyclopedia' | 'records' | 'settings';
 type Feedback = 'correct' | 'wrong' | 'revealed' | null;
+type AppHistory = { session: string; screen: Screen; from: Screen | null };
+
+const screens: Screen[] = ['home', 'stages', 'quiz', 'result', 'memory', 'guide', 'encyclopedia', 'records', 'settings'];
+
+function appHistory(value: unknown): AppHistory | null {
+  if (!value || typeof value !== 'object' || !('mahjongLearning' in value)) return null;
+  const entry = value.mahjongLearning;
+  if (!entry || typeof entry !== 'object' || !('session' in entry) || !('screen' in entry) || !('from' in entry)) return null;
+  return typeof entry.session === 'string' && screens.includes(entry.screen as Screen) && (entry.from === null || screens.includes(entry.from as Screen)) ? entry as AppHistory : null;
+}
 
 const readings: Record<string, string> = {
   萬子: 'マンズ', 筒子: 'ピンズ', 索子: 'ソーズ', 字牌: 'ジハイ',
@@ -82,6 +92,7 @@ export default function App() {
   const [guideFamily, setGuideFamily] = useState<Tile['family']>('萬子');
   const [dictionaryReturn, setDictionaryReturn] = useState<Screen>('home');
   const [resetOpen, setResetOpen] = useState(false);
+  const historySession = useRef(`${Date.now()}-${Math.random()}`);
   const question = questions[questionIndex];
   const memoryOptions: PairCount[] = compactMemory ? [6, 12] : [6, 12, 26];
   const resolved = feedback === 'correct' || feedback === 'revealed';
@@ -89,6 +100,20 @@ export default function App() {
 
   useEffect(() => saveData(data), [data]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen, questionIndex]);
+  useEffect(() => {
+    const session = historySession.current;
+    window.history.replaceState({ ...window.history.state, mahjongLearning: { session, screen: 'home', from: null } }, '');
+    const restore = (event: PopStateEvent) => {
+      const entry = appHistory(event.state);
+      const destination = entry?.session === session ? entry.screen : 'home';
+      memoryRun.current += 1;
+      setResetOpen(false);
+      setDictionaryReturn(entry?.session === session && entry.from ? entry.from : 'home');
+      setScreen(destination);
+    };
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, []);
   useEffect(() => {
     const query = window.matchMedia('(max-width: 520px)');
     const update = () => setCompactMemory(query.matches);
@@ -109,6 +134,25 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [screen, questionIndex, data.settings.showTime, feedback, resolved]);
 
+  function showScreen(destination: Screen, replace = false) {
+    if (screen === destination) return;
+    const previous = appHistory(window.history.state);
+    const from = replace && previous?.session === historySession.current ? previous.from : screen;
+    const state = { ...window.history.state, mahjongLearning: { session: historySession.current, screen: destination, from } };
+    if (replace) window.history.replaceState(state, '');
+    else window.history.pushState(state, '');
+    setScreen(destination);
+  }
+
+  function backTo(destination: Screen) {
+    const current = appHistory(window.history.state);
+    if (current?.session === historySession.current && current.from === destination) {
+      window.history.back();
+    } else {
+      showScreen(destination, true);
+    }
+  }
+
   function startStage(id: StageId) {
     setStage(id);
     setQuestions(createRun(id));
@@ -121,7 +165,7 @@ export default function App() {
     questionStartedAt.current = Date.now();
     setElapsedSeconds(0);
     setData(current => ({ ...current, stages: { ...current.stages, [id]: { ...current.stages[id], attempts: current.stages[id].attempts + 1 } } }));
-    setScreen('quiz');
+    showScreen('quiz', screen === 'result');
   }
 
   function choose(index: number) {
@@ -167,7 +211,7 @@ export default function App() {
         completed: current.stages[stage].completed + 1,
         bestFirstTry: Math.max(current.stages[stage].bestFirstTry, firstTryScore),
       } } }));
-      setScreen('result');
+      showScreen('result', true);
       return;
     }
     setQuestionIndex(current => current + 1);
@@ -186,7 +230,7 @@ export default function App() {
     setDeck(createMemoryDeck(availableCount));
     setTurns(0);
     setMemoryBusy(false);
-    setScreen('memory');
+    showScreen('memory');
   }
 
   function flipCard(key: string) {
@@ -215,7 +259,7 @@ export default function App() {
     if (screen === 'memory') memoryRun.current += 1;
     if (destination === 'encyclopedia') setDictionaryReturn(screen);
     setResetOpen(false);
-    setScreen(destination);
+    showScreen(destination);
   }
 
   const stageTitle = stages.find(item => item.id === stage)?.title ?? '';
@@ -227,7 +271,7 @@ export default function App() {
 
   return <div className="app-shell">
     <header className={`topbar ${screen === 'home' ? 'topbar-home' : ''}`}>
-      {screen !== 'home' ? <button className="plain-button" onClick={() => navigate(screen === 'encyclopedia' ? dictionaryReturn : screen === 'quiz' || screen === 'result' ? 'stages' : 'home')}>‹ 戻る</button> : <span />}
+      {screen !== 'home' ? <button className="plain-button" onClick={() => backTo(screen === 'encyclopedia' ? dictionaryReturn : screen === 'quiz' || screen === 'result' ? 'stages' : 'home')}>‹ 戻る</button> : <span />}
       <span className="topbar-title"><ReadingText text={screen === 'home' ? '' : screen === 'stages' ? 'ステージ選択' : screen === 'quiz' ? stageTitle : screen === 'result' ? 'ステージ結果' : screen === 'memory' ? '神経衰弱' : screen === 'guide' ? '牌一覧' : screen === 'encyclopedia' ? '麻雀辞典' : screen === 'records' ? '成績' : '設定'} enabled={data.settings.furigana} /></span>
       {screen === 'home' ? <button className="plain-button" onClick={() => navigate('settings')}><span className="gear-icon" aria-hidden="true">⚙</span>設定</button> : <span />}
     </header>
@@ -266,8 +310,10 @@ export default function App() {
       </section>}
 
       {screen === 'quiz' && <section className="page-section quiz-section">
-        <div className="progress-label">{stageTitle} ・ {questionIndex + 1} / 5 {data.settings.showTime && <span>・ {elapsedSeconds}秒</span>}</div>
-        <button className="dictionary-inline-link" onClick={() => navigate('encyclopedia')}>用語・役を辞典で見る</button>
+        <div className="quiz-heading-row">
+          <div className="progress-label">{stageTitle} ・ {questionIndex + 1}/5 {data.settings.showTime && <span>・ {elapsedSeconds}秒</span>}</div>
+          <button className="dictionary-inline-link" onClick={() => navigate('encyclopedia')}>用語・役を辞典で見る</button>
+        </div>
         <div className="progress-dots" aria-hidden="true">{[0, 1, 2, 3, 4].map(index => <span key={index} className={index <= questionIndex ? 'active' : ''} />)}</div>
         <h1><ReadingText text={question.kind === 'family' ? 'この牌の種類は？' : question.kind === 'number' ? 'この牌の数字は？' : question.kind === 'reading' ? 'この牌の読みは？' : question.prompt} enabled={data.settings.furigana} /></h1>
         {'tile' in question && <>
@@ -282,7 +328,10 @@ export default function App() {
           <p className="drill-note">{question.note}</p>
           <div className="hand-tiles" role="group" aria-label={`${question.hand.length}枚の手牌`}>{question.hand.map((id, index) => <TileImage key={`${id}-${index}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />)}</div>
         </>}
-        <p className="section-caption">{question.kind === 'group' ? `${question.answer.length}枚選択してください` : question.kind === 'completeMeld' ? `組を作れる牌を${question.answer.length}種類すべて選んでください` : '答えを選択してください'}</p>
+        <div className="quiz-prompt-row">
+          <p className="section-caption">{question.kind === 'group' ? `${question.answer.length}枚選択してください` : question.kind === 'completeMeld' ? `組を作れる牌を${question.answer.length}種類すべて選んでください` : '答えを選択してください'}</p>
+          <button className="reveal-button" disabled={resolved} onClick={revealAnswer}>答えを見る・スキップ</button>
+        </div>
         {selectionLimit > 1 && <p className="selection-help">選択中：{selected.length} / {selectionLimit}　選んだ牌はもう一度押すと解除できます。<br />{selectionLimit}つ選んだあとに別の牌を押すと、先に選んだ牌から入れ替わります。</p>}
         <div className={question.kind === 'drill' ? `drill-options ${question.topic >= 10 ? 'discard-options' : ''}` : question.kind === 'group' ? 'tile-options' : question.kind === 'tileFromReading' || question.kind === 'completeMeld' ? 'tile-options tile-options-four' : 'text-options'}>
           {question.choices.map((choice, index) => <button key={`${choice}-${index}`} className={`option ${selected.includes(index) ? 'selected' : ''} ${resolved && question.kind === 'drill' && question.accepted.includes(choice) ? 'correct-option' : ''}`} onClick={() => choose(index)} aria-pressed={selected.includes(index)}>
@@ -294,7 +343,6 @@ export default function App() {
           {question.hint && <Button secondary disabled={resolved} onClick={() => setHintOpen(value => !value)}>ヒント</Button>}
           {resolved ? <Button onClick={nextQuestion}>{questionIndex === questions.length - 1 ? '結果を見る' : '次の問題へ'}　→</Button> : <Button onClick={answer} disabled={selected.length !== selectionLimit}>回答する</Button>}
         </div>
-        <button className="reveal-button" disabled={resolved} onClick={revealAnswer}>答えを見る・スキップ</button>
         {question.kind === 'drill' && resolved && question.example && <div className="answer-example"><p>{question.example.label}</p><div className="example-groups">{question.example.groups.map((group, index) => <div key={index}>{group.map((id, i) => <TileImage key={`${id}-${i}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />)}</div>)}</div></div>}
         {hintOpen && !resolved && question.hint && <div className="hint">{question.hint}</div>}
         {feedback && <div className={`feedback ${feedback}`} role="status"><strong>{feedback === 'correct' ? '正解' : feedback === 'revealed' ? '答えを確認（正解数には含めません）' : 'もう一度選んでください'}</strong>{resolved && <p><ReadingText text={question.explanation} enabled={data.settings.furigana} /></p>}</div>}
@@ -307,9 +355,9 @@ export default function App() {
         <div className="info-panel"><strong>今回学んだ内容</strong><p>{stageTitle}</p></div>
         <p className="result-guidance">{suggestNextStage ? nextStage ? `いい調子です。次は「${nextStage.title}」に進めます。` : 'このカテゴリをひと通り終えました。' : '別の5問でもう少し練習してみましょう。'}</p>
         {suggestNextStage
-          ? <><Button onClick={() => nextStage ? startStage(nextStage.id) : navigate('stages')}>{nextStage ? '次のレッスンへ　→' : 'ステージ選択へ　→'}</Button><Button secondary onClick={() => startStage(stage)}>もう5問練習する</Button></>
+          ? <><Button onClick={() => nextStage ? startStage(nextStage.id) : backTo('stages')}>{nextStage ? '次のレッスンへ　→' : 'ステージ選択へ　→'}</Button><Button secondary onClick={() => startStage(stage)}>もう5問練習する</Button></>
           : <><Button onClick={() => startStage(stage)}>もう5問練習する</Button>{nextStage && <Button secondary onClick={() => startStage(nextStage.id)}>次のレッスンへ</Button>}</>}
-        {(!suggestNextStage || nextStage) && <button className="result-stage-link" onClick={() => navigate('stages')}>ステージ選択に戻る</button>}
+        {(!suggestNextStage || nextStage) && <button className="result-stage-link" onClick={() => backTo('stages')}>ステージ選択に戻る</button>}
       </section>}
 
       {screen === 'memory' && <section className={`page-section memory-section memory-section-${pairCount}`}>

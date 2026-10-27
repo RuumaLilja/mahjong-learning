@@ -69,11 +69,11 @@ ruby rt{font-size:.56em;font-weight:500;line-height:1}
 .option{border:2px solid transparent;border-radius:13px;min-height:66px;background:#f9f7ec;color:#26332f;font-weight:700;font-size:18px;padding:12px}
 .option.selected{border-color:#f3c44e;background:#f8e4a4}
 .tile-options{display:flex;justify-content:center;flex-wrap:wrap;gap:9px}
-.tile-options .option{width:calc((100% - 36px)/5);min-width:62px;max-width:100px;min-height:142px;height:auto;padding:6px 2px;background:transparent;border:2px solid transparent}
+.tile-options .option{width:calc((100% - 36px)/5);min-width:62px;max-width:100px;min-height:142px;height:auto;padding:6px 2px;background:transparent;border:2px solid transparent;display:flex;align-items:flex-start;justify-content:center}
 .tile-options-four .option{width:calc((100% - 27px)/4);max-width:115px}
 .tile-options .option.selected{background:transparent}
-.tile-options .option.selected .tile-wrap{transform:translateY(-7px);box-shadow:0 5px 0 #1f8a6a,0 7px 0 #146b52,0 0 0 4px #f3c44e,0 16px 16px #0004}
-.tile-option-content{display:flex;flex-direction:column;align-items:center;gap:12px}
+.tile-options .option.selected .tile-wrap{box-shadow:0 5px 0 #1f8a6a,0 7px 0 #146b52,0 0 0 4px #f3c44e,0 16px 16px #0004}
+.tile-option-content{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
 .tile-option-content .tile-wrap{height:100px}
 .feedback,.hint{border-radius:12px;margin-top:22px;padding:16px 18px;background:#0b3832;line-height:1.6}
 .feedback.correct{border-left:4px solid #f3c44e}.feedback.wrong{border-left:4px solid #e78675}
@@ -113,10 +113,14 @@ ruby rt{font-size:.56em;font-weight:500;line-height:1}
 
 .answer-example{margin-top:24px;padding:16px;background:#0b3832;border-radius:12px;font-size:13px}.example-groups{display:flex;flex-wrap:wrap;gap:16px}.example-groups>div{display:flex;gap:3px}.example-groups .tile-wrap{height:48px}
 
-.reveal-button{display:block;margin:16px auto 0;padding:10px 18px;border:1px solid #9ab9ad;border-radius:8px;background:transparent;color:inherit;min-height:44px}.reveal-button:disabled{opacity:.45;cursor:default}.feedback.revealed{border:1px solid #9ab9ad}
+.quiz-prompt-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:20px 0 10px}
+.quiz-prompt-row .section-caption{min-width:0;margin:0;line-height:1.5}
+.reveal-button{flex:none;min-height:44px;padding:8px 0 8px 6px;border:0;background:transparent;color:#d1e8df;font-size:12px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.reveal-button:disabled{visibility:hidden;pointer-events:none}
+.feedback.revealed{border:1px solid #9ab9ad}
 
 .answer-badge{display:block;height:20px;line-height:20px;font-size:11px;font-weight:700}
-.drill-options .option.selected:not(.correct-option){border-color:#a5adb2;background:#dce0e3;color:#26332f}
+.drill-options .option.selected:not(.correct-option){border-color:#f3c44e;background:#f8e4a4;color:#26332f}
 .option.correct-option{border-color:#80c9e2;background:#d9f2fc;color:#203e49;box-shadow:0 0 0 1px #80c9e2}
 .option.correct-option.selected{background:#f9e6a0;border-color:#f3c44e;box-shadow:0 0 0 1px #f3c44e}
 .ukeire-diagram{margin-top:24px}.ukeire-diagram h2{font-size:18px}.ukeire-row{padding:16px;margin-top:12px;border:1px solid #72968d;border-radius:12px;background:#0b3832}.ukeire-best{border-color:#66d5ae}.ukeire-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ukeire-discard{display:flex;align-items:center;gap:10px}.ukeire-diagram .tile-wrap{height:56px}.ukeire-label{font-size:12px;color:#c0d4cc;margin:14px 0 10px}.ukeire-tiles{display:flex;flex-wrap:wrap;gap:12px}.ukeire-tiles>div{display:flex;align-items:center;flex-direction:column;gap:6px}.ukeire-tiles>div>span:last-child{font-size:11px}.ukeire-diagram summary{cursor:pointer;padding:16px 0;text-decoration:underline;text-underline-offset:4px}
@@ -132,7 +136,38 @@ ruby rt{font-size:.56em;font-weight:500;line-height:1}
 .ukeire-tiles>div{gap:14px}
 @media(max-width:520px){.discard-options{grid-template-columns:repeat(6,minmax(0,1fr))}.discard-options .drill-choice .tile-wrap{height:40px}.drill-options:not(.discard-options) .drill-choice{min-height:54px}}
 
-.dictionary-inline-link{display:block;margin:-5px 0 18px auto;padding:8px 0;border:0;background:transparent;color:#f3c44e;text-decoration:underline;text-underline-offset:4px;font-size:13px;font-weight:700}
+.quiz-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.quiz-heading-row .progress-label{min-width:0;margin:0;line-height:1.4}
+.dictionary-inline-link{flex:none;min-height:44px;margin:0;padding:8px 0 8px 8px;border:0;background:transparent;color:#f3c44e;text-decoration:underline;text-underline-offset:4px;font-size:13px;font-weight:700;white-space:nowrap}
+@media(max-width:520px){
+  .topbar{height:60px}
+  .main-content{padding-bottom:40px}
+  .main-content:not(.home-content){padding-top:8px}
+  .home-content{padding-top:40px}
+  .home-content .hero-tiles{height:112px}
+  .home-content .hero-tiles .tile-wrap{height:100px}
+  .home-content h1{margin-top:24px}
+  .home-subtitle{margin-bottom:14px}
+  .home-primary{margin-top:30px}
+  .home-menu{margin-top:24px}
+  .menu-grid button{min-height:68px}
+  .page-section>.muted{margin-bottom:18px}
+  .category-tabs{margin-top:16px}
+  .stage-list{gap:8px}
+  .stage-card{min-height:78px}
+  .quiz-heading-row{margin-bottom:6px}
+  .quiz-heading-row .progress-label,.dictionary-inline-link{font-size:12px}
+  .quiz-section .progress-dots{margin-bottom:14px}
+  .quiz-section h1{margin:4px 0 10px}
+  .quiz-section .question-tile{margin:18px auto 8px}
+  .quiz-section .question-tile-name{margin-bottom:18px}
+  .quiz-section .question-pair{margin:18px auto 20px}
+  .quiz-section .drill-note{margin:10px 0}
+  .quiz-section .hand-tiles{margin:12px 0 18px}
+  .quiz-section .quiz-prompt-row{margin:14px 0 10px}
+  .quiz-section .text-options{gap:10px}
+  .quiz-section .quiz-actions{margin-top:20px}
+}
 .dictionary-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:28px 0 22px}
 .dictionary-switch button{min-height:70px;border:1px solid #72968d;border-radius:13px;background:#0b3832;color:#fff;font-weight:700;font-size:18px}
 .dictionary-switch button.active{background:#f3c44e;color:#23302d;border-color:#f3c44e}

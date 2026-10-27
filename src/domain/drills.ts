@@ -1,5 +1,6 @@
 import { tileById, tiles, type TileId } from './tiles';
 import { discardOptions, waits, winningGroups, efficiencyOptions } from './hands';
+import { shuffle } from './shuffle';
 
 export type DrillQuestion = {
   id: string; kind: 'drill'; topic: number; pattern: number;
@@ -10,15 +11,6 @@ export type DrillQuestion = {
 };
 const names = (ids: readonly TileId[]) => ids.map(id => tileById[id].label).join('・');
 const sort = (ids: TileId[]) => ids.sort((a, b) => tiles.findIndex(t => t.id === a) - tiles.findIndex(t => t.id === b));
-function shuffled<T>(items: readonly T[], random: () => number): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 // Distinct shapes: two-sided, edge, closed, pair wait, double pair,
 // and a connected 5-tile sequence shape. Suit rotation/reflection adds practice.
 const templates = [
@@ -111,9 +103,9 @@ export function createDrillRun(topic: number, random: () => number): DrillQuesti
   if (!banks.has(topic)) banks.set(topic, drillBank(topic));
   const bank = banks.get(topic)!;
   // Different structural patterns in every session, not five suit recolorings.
-  return shuffled([...new Set(bank.map(q => q.pattern))], random).slice(0,5).map(pattern => {
-    const question = shuffled(bank.filter(q => q.pattern === pattern), random)[0];
-    const order = shuffled(question.choices.map((_, index) => index), random);
+  return shuffle([...new Set(bank.map(q => q.pattern))], random).slice(0,5).map(pattern => {
+    const question = shuffle(bank.filter(q => q.pattern === pattern), random)[0];
+    const order = shuffle(question.choices.map((_, index) => index), random);
     return { ...question, choices: order.map(i => question.choices[i]), choiceTiles: order.map(i => question.choiceTiles[i]) };
   });
 }

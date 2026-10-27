@@ -1,6 +1,7 @@
 import { createDrillRun, type DrillQuestion } from './drills';
 import questionBank from '../data/questions.json';
 import { tileById, tiles, type Tile, type TileId } from './tiles';
+import { shuffle } from './shuffle';
 
 export type StageId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 type BaseQuestion = { id: string; explanation: string; hint?: string };
@@ -40,15 +41,6 @@ export function completingTiles(pair: readonly [TileId, TileId]): TileId[] {
     const numbers = [firstNumber, secondNumber, candidate.number].sort((a, b) => a - b);
     return numbers[0] + 1 === numbers[1] && numbers[1] + 1 === numbers[2];
   }).map(candidate => candidate.id);
-}
-
-function shuffle<T>(items: readonly T[], random: () => number): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
 }
 
 function materialize(spec: QuestionSpec, random: () => number): Question {

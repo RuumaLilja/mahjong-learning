@@ -103,7 +103,7 @@ export default function App() {
   useEffect(() => saveData(data), [data]);
   useEffect(() => {
     document.documentElement.dataset.theme = data.settings.theme;
-    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', data.settings.theme === 'black' ? '#20272c' : '#14524a');
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', data.settings.theme === 'black' ? '#1f1f1e' : '#14524a');
   }, [data.settings.theme]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen, questionIndex]);
   useEffect(() => {
@@ -269,9 +269,6 @@ export default function App() {
   }
 
   const stageTitle = stages.find(item => item.id === stage)?.title ?? '';
-  const currentCategoryStages = categories.find(item => item.ids.includes(stage))?.ids ?? [];
-  const nextStage = stages.find(item => item.id === currentCategoryStages[currentCategoryStages.indexOf(stage) + 1]);
-  const suggestNextStage = firstTryScore >= 4;
   const familyTabs = ['萬子', '筒子', '索子', '字牌'] as const;
   const memoryComplete = deck.every(card => card.matched);
 
@@ -361,11 +358,8 @@ export default function App() {
         <p className="eyebrow">STAGE COMPLETE</p><h1>ステージ完了</h1>
         <div className="result-score"><strong>{firstTryScore} / 5</strong><span>最初の回答で正解した数</span></div>
         <div className="info-panel"><strong>今回学んだ内容</strong><p>{stageTitle}</p></div>
-        <p className="result-guidance">{suggestNextStage ? nextStage ? `いい調子です。次は「${nextStage.title}」に進めます。` : 'このカテゴリをひと通り終えました。' : '別の5問でもう少し練習してみましょう。'}</p>
-        {suggestNextStage
-          ? <><Button onClick={() => nextStage ? startStage(nextStage.id) : backTo('stages')}>{nextStage ? '次のレッスンへ　→' : 'ステージ選択へ　→'}</Button><Button secondary onClick={() => startStage(stage)}>もう5問練習する</Button></>
-          : <><Button onClick={() => startStage(stage)}>もう5問練習する</Button>{nextStage && <Button secondary onClick={() => startStage(nextStage.id)}>次のレッスンへ</Button>}</>}
-        {(!suggestNextStage || nextStage) && <button className="result-stage-link" onClick={() => backTo('stages')}>ステージ選択に戻る</button>}
+        <Button onClick={() => startStage(stage)}>もう5問練習する</Button>
+        <Button secondary onClick={() => backTo('stages')}>ステージ選択に戻る</Button>
       </section>}
 
       {screen === 'memory' && <section className={`page-section memory-section memory-section-${pairCount}`}>

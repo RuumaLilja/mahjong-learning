@@ -1,4 +1,5 @@
 import type { StageId } from './quiz';
+import type { Theme } from '../theme';
 
 export interface StageRecord {
   attempts: number;
@@ -8,7 +9,7 @@ export interface StageRecord {
 
 export interface SavedData {
   version: 1;
-  settings: { furigana: boolean; helperNumbers: boolean; showTime: boolean };
+  settings: { furigana: boolean; helperNumbers: boolean; showTime: boolean; theme: Theme };
   stages: Record<StageId, StageRecord>;
 }
 
@@ -17,7 +18,7 @@ const key = 'mahjong-learning:v1';
 export function freshData(): SavedData {
   return {
     version: 1,
-    settings: { furigana: true, helperNumbers: false, showTime: false },
+    settings: { furigana: true, helperNumbers: false, showTime: false, theme: 'regular' },
     stages: {
       1: { attempts: 0, completed: 0, bestFirstTry: 0 },
       2: { attempts: 0, completed: 0, bestFirstTry: 0 },
@@ -39,7 +40,11 @@ export function loadData(): SavedData {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<SavedData> | null;
     if (value?.version === 1 && value.settings && value.stages && [1, 2, 3, 4, 5].every(id => value.stages?.[id as StageId])) {
-      return { ...value, stages: { ...freshData().stages, ...value.stages } } as SavedData;
+      return {
+        ...value,
+        settings: { ...freshData().settings, ...value.settings, theme: value.settings.theme === 'black' ? 'black' : 'regular' },
+        stages: { ...freshData().stages, ...value.stages },
+      } as SavedData;
     }
   } catch {
     // Invalid or unavailable storage starts a new local profile.

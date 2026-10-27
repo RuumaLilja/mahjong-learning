@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import Encyclopedia from './Encyclopedia';
 import type { DrillQuestion } from './domain/drills';
 import { createMemoryDeck, type MemoryCard, type PairCount } from './domain/memory';
 import { createRun, isCorrect, stages, type Question, type StageId } from './domain/quiz';
 import { clearRecords, loadData, saveData, type SavedData } from './domain/storage';
 import { tileById, tileUrl, tiles, type Tile, type TileId } from './domain/tiles';
+import { ThemeContext } from './theme';
 
 type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'encyclopedia' | 'records' | 'settings';
 type Feedback = 'correct' | 'wrong' | 'revealed' | null;
@@ -34,8 +35,9 @@ function ReadingText({ text, enabled }: { text: string; enabled: boolean }) {
 }
 
 function TileImage({ tile, helperNumber = false, celebrate = false, className = '' }: { tile: Tile; helperNumber?: boolean; celebrate?: boolean; className?: string }) {
+  const theme = useContext(ThemeContext);
   return <span className={`tile-wrap ${className}`}>
-    <img className="tile-image" src={tileUrl(tile)} alt={tile.label} />
+    <img className="tile-image" src={tileUrl(tile, theme === 'black' ? 'Black' : 'Regular')} alt={tile.label} />
     {helperNumber && tile.number && <span className="tile-number" aria-hidden="true">{tile.number}</span>}
     {celebrate && <svg className="tile-success-ring" viewBox="0 0 100 130" preserveAspectRatio="none" aria-hidden="true"><ellipse cx="50" cy="65" rx="47" ry="60" /></svg>}
   </span>;
@@ -99,6 +101,10 @@ export default function App() {
   const selectionLimit = Array.isArray(question.answer) ? question.answer.length : 1;
 
   useEffect(() => saveData(data), [data]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = data.settings.theme;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', data.settings.theme === 'black' ? '#20272c' : '#14524a');
+  }, [data.settings.theme]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen, questionIndex]);
   useEffect(() => {
     const session = historySession.current;
@@ -269,7 +275,7 @@ export default function App() {
   const familyTabs = ['萬子', '筒子', '索子', '字牌'] as const;
   const memoryComplete = deck.every(card => card.matched);
 
-  return <div className="app-shell">
+  return <ThemeContext.Provider value={data.settings.theme}><div className="app-shell" data-theme={data.settings.theme}>
     <header className={`topbar ${screen === 'home' ? 'topbar-home' : ''}`}>
       {screen !== 'home' ? <button className="plain-button" onClick={() => backTo(screen === 'encyclopedia' ? dictionaryReturn : screen === 'quiz' || screen === 'result' ? 'stages' : 'home')}>‹ 戻る</button> : <span />}
       <span className="topbar-title"><ReadingText text={screen === 'home' ? '' : screen === 'stages' ? 'ステージ選択' : screen === 'quiz' ? stageTitle : screen === 'result' ? 'ステージ結果' : screen === 'memory' ? '神経衰弱' : screen === 'guide' ? '牌一覧' : screen === 'encyclopedia' ? '麻雀辞典' : screen === 'records' ? '成績' : '設定'} enabled={data.settings.furigana} /></span>
@@ -317,8 +323,10 @@ export default function App() {
         <div className="progress-dots" aria-hidden="true">{[0, 1, 2, 3, 4].map(index => <span key={index} className={index <= questionIndex ? 'active' : ''} />)}</div>
         <h1><ReadingText text={question.kind === 'family' ? 'この牌の種類は？' : question.kind === 'number' ? 'この牌の数字は？' : question.kind === 'reading' ? 'この牌の読みは？' : question.prompt} enabled={data.settings.furigana} /></h1>
         {'tile' in question && <>
-          <div className="question-tile"><TileImage tile={tileById[question.tile]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct'} /></div>
-          <div className="question-tile-name" aria-live="polite">{feedback === 'correct' ? <TileReading tile={tileById[question.tile]} enabled={data.settings.furigana} /> : <span aria-hidden="true">　</span>}</div>
+          <div className="question-tile">
+            <TileImage tile={tileById[question.tile]} helperNumber={data.settings.helperNumbers} celebrate={feedback === 'correct'} />
+            <div className="question-tile-name" aria-live="polite">{feedback === 'correct' && <TileReading tile={tileById[question.tile]} enabled={data.settings.furigana} />}</div>
+          </div>
         </>}
         {question.kind === 'completeMeld' && <div className="question-pair" role="group" aria-label="組を作る2枚の牌">
           {question.pair.map((id, index) => <div className="question-pair-tile" key={`${id}-${index}`}><TileImage tile={tileById[id]} helperNumber={data.settings.helperNumbers} /><TileReading tile={tileById[id]} enabled={data.settings.furigana} /></div>)}
@@ -392,6 +400,12 @@ export default function App() {
 
       {screen === 'settings' && <section className="page-section settings-section">
         <p className="eyebrow">PREFERENCES</p><h1>表示と記録の設定</h1>
+        <div className="theme-picker" role="group" aria-label="牌と画面の配色">
+          {([['regular', '白牌・緑'], ['black', '黒牌・金']] as const).map(([theme, label]) => <button key={theme} className={data.settings.theme === theme ? 'active' : ''} aria-pressed={data.settings.theme === theme} onClick={() => setData(current => ({ ...current, settings: { ...current.settings, theme } }))}>
+            <span className={`theme-preview theme-preview-${theme}`} aria-hidden="true"><span className="theme-preview-tile"><img src={tileUrl(tileById.man1, theme === 'black' ? 'Black' : 'Regular')} alt="" /></span></span>
+            <strong>{label}</strong>
+          </button>)}
+        </div>
         <div className="settings-list">
           {([
             ['furigana', 'ふりがなを表示', '牌の読み方を補助します'],
@@ -404,5 +418,5 @@ export default function App() {
         {resetOpen && <div className="dialog-backdrop"><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title"><h2 id="reset-title">学習記録を消しますか？</h2><p>これまでの成績や挑戦回数がすべて消えます。元には戻せません。</p><div className="dialog-actions"><Button secondary onClick={() => setResetOpen(false)}>やめる</Button><Button onClick={() => { setData(current => clearRecords(current)); setResetOpen(false); }}>記録を消す</Button></div></div></div>}
       </section>}
     </main>
-  </div>;
+  </div></ThemeContext.Provider>;
 }

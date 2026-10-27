@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { terms, yaku, type Entry } from './data/encyclopedia';
 import { tileById, tileUrl, type TileId } from './domain/tiles';
+import { ThemeContext } from './theme';
 
 type Section = 'terms' | 'yaku';
 
 function TileExample({ entry }: { entry: Entry }) {
+  const theme = useContext(ThemeContext);
   if (!entry.groups && !entry.media) return null;
   return <figure className="dictionary-example">
     {entry.groups && <div className={`dictionary-groups ${['naki', 'chi', 'pon'].includes(entry.id) ? 'dictionary-call' : ''}`} aria-label={entry.caption}>
-      {entry.groups.map((group, index) => <div className="dictionary-group" key={index}>{group.map((id: TileId, tileIndex) => <span className="tile-wrap" key={`${id}-${tileIndex}`}><img className="tile-image" src={tileUrl(tileById[id])} alt={tileById[id].label} /></span>)}</div>)}
+      {entry.groups.map((group, index) => <div className="dictionary-group" key={index}>{group.map((id: TileId, tileIndex) => <span className="tile-wrap" key={`${id}-${tileIndex}`}><img className="tile-image" src={tileUrl(tileById[id], theme === 'black' ? 'Black' : 'Regular')} alt={tileById[id].label} /></span>)}</div>)}
     </div>}
     {entry.media && <img className="dictionary-media" src={entry.media.src} alt={entry.media.alt} loading="lazy" />}
     {entry.caption && <figcaption>{entry.caption}</figcaption>}

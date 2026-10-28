@@ -1,5 +1,6 @@
 import type { StageId } from './quiz';
 import type { Theme } from '../theme';
+import type { ExplanationStyle } from '../data/learningCopy';
 
 export interface StageRecord {
   attempts: number;
@@ -9,7 +10,7 @@ export interface StageRecord {
 
 export interface SavedData {
   version: 1;
-  settings: { furigana: boolean; helperNumbers: boolean; showTime: boolean; theme: Theme };
+  settings: { furigana: boolean; helperNumbers: boolean; showTime: boolean; theme: Theme; explanationStyle: ExplanationStyle };
   stages: Record<StageId, StageRecord>;
 }
 
@@ -18,7 +19,7 @@ const key = 'mahjong-learning:v1';
 export function freshData(): SavedData {
   return {
     version: 1,
-    settings: { furigana: true, helperNumbers: false, showTime: false, theme: 'regular' },
+    settings: { furigana: false, helperNumbers: false, showTime: false, theme: 'regular', explanationStyle: 'child' },
     stages: {
       1: { attempts: 0, completed: 0, bestFirstTry: 0 },
       2: { attempts: 0, completed: 0, bestFirstTry: 0 },
@@ -42,7 +43,7 @@ export function loadData(): SavedData {
     if (value?.version === 1 && value.settings && value.stages && [1, 2, 3, 4, 5].every(id => value.stages?.[id as StageId])) {
       return {
         ...value,
-        settings: { ...freshData().settings, ...value.settings, theme: value.settings.theme === 'black' ? 'black' : 'regular' },
+        settings: { ...freshData().settings, ...value.settings, theme: value.settings.theme === 'black' ? 'black' : 'regular', explanationStyle: value.settings.explanationStyle === 'adult' ? 'adult' : 'child' },
         stages: { ...freshData().stages, ...value.stages },
       } as SavedData;
     }

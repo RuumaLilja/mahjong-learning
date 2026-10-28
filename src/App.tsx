@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Encyclopedia from './Encyclopedia';
 import type { DrillQuestion } from './domain/drills';
 import { createMemoryDeck, type MemoryCard, type PairCount } from './domain/memory';
@@ -6,6 +6,7 @@ import { createRun, isCorrect, stages, type Question, type StageId } from './dom
 import { clearRecords, loadData, saveData, type SavedData } from './domain/storage';
 import { tileById, tileUrl, tiles, type Tile, type TileId } from './domain/tiles';
 import { ThemeContext } from './theme';
+import { childStages, questionForStyle } from './data/learningCopy';
 
 type Screen = 'home' | 'stages' | 'quiz' | 'result' | 'memory' | 'guide' | 'encyclopedia' | 'records' | 'settings';
 type Feedback = 'correct' | 'wrong' | 'revealed' | null;
@@ -51,29 +52,31 @@ function Button({ children, onClick, secondary = false, disabled = false }: { ch
   return <button className={`button ${secondary ? 'button-secondary' : 'button-primary'}`} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
-function UkeireDiagram({ question, helperNumbers }: { question: DrillQuestion; helperNumbers: boolean }) {
+function UkeireDiagram({ question, helperNumbers, childCopy }: { question: DrillQuestion; helperNumbers: boolean; childCopy: boolean }) {
   if (!question.comparison) return null;
   const best = question.comparison.filter(row => question.accepted.includes(row.discard));
   const others = question.comparison.filter(row => !question.accepted.includes(row.discard));
   function rowView(row: NonNullable<DrillQuestion['comparison']>[number]) {
     const correct = question.accepted.includes(row.discard);
     return <div className={`ukeire-row ${correct ? 'ukeire-best' : ''}`} key={row.discard}>
-      <div className="ukeire-heading"><span className="ukeire-discard"><TileImage tile={tileById[row.discard]} helperNumber={helperNumbers} /><span>を切る</span></span><strong>{correct ? '正解 · ' : ''}合計 {row.copies}枚</strong></div>
-      <p className="ukeire-label">次に引くとテンパイへ進める牌 ↓</p>
+      <div className="ukeire-heading"><span className="ukeire-discard"><TileImage tile={tileById[row.discard]} helperNumber={helperNumbers} /><span>{childCopy ? 'を捨てる' : 'を切る'}</span></span><strong>{correct ? '正解 · ' : ''}合計 {row.copies}枚</strong></div>
+      <p className="ukeire-label">{childCopy ? '次に引くと「あと1枚で完成」の形へ進める牌 ↓' : '次に引くとテンパイへ進める牌 ↓'}</p>
       <div className="ukeire-tiles">{row.tiles.map(tile => <div key={tile.id}><TileImage tile={tileById[tile.id]} helperNumber={helperNumbers} /><span>残り{tile.copies}枚</span></div>)}</div>
     </div>;
   }
-  return <section className="ukeire-diagram" aria-label="打牌ごとの受け入れ牌と残り枚数"><h2>牌で比べる受け入れ</h2>{best.map(rowView)}{others.length > 0 && <details><summary>ほかの打牌と比べる（{others.length}候補）</summary>{others.map(rowView)}</details>}</section>;
+  return <section className="ukeire-diagram" aria-label={childCopy ? '捨てる牌ごとに、手を進められる牌の残り枚数を比較' : '打牌ごとの受け入れ牌と残り枚数'}><h2>{childCopy ? '次に手を進められる牌を比べる' : '牌で比べる受け入れ'}</h2>{best.map(rowView)}{others.length > 0 && <details><summary>{childCopy ? 'ほかの捨て方' : 'ほかの打牌'}と比べる（{others.length}候補）</summary>{others.map(rowView)}</details>}</section>;
 }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [data, setData] = useState<SavedData>(loadData);
+  const childCopy = data.settings.explanationStyle === 'child';
+  const displayStages = stages.map(item => childCopy ? { ...item, ...childStages[item.id] } : item);
   const [category, setCategory] = useState(0);
   const categories = [
     { title: '牌を覚える', ids: [1, 2, 4, 7], description: '図柄・数字・読み方の基礎から。' },
-    { title: '形を覚える', ids: [5, 6], description: '雀頭・刻子・順子と、あと1枚で完成する形。' },
-    { title: '待ち・何切る', ids: [9, 10, 12], description: '待ちを見つけ、テンパイにする打牌を練習。' },
+    { title: '形を覚える', ids: [5, 6], description: childCopy ? '同じ牌のペアや3枚の組、あと1枚で組になる形。' : '雀頭・刻子・順子と、あと1枚で完成する形。' },
+    { title: '待ち・何切る', ids: [9, 10, 12], description: childCopy ? '完成に必要な牌や、捨てる牌を考える練習。' : '待ちを見つけ、テンパイにする打牌を練習。' },
   ];
   const [stage, setStage] = useState<StageId>(1);
   const [questions, setQuestions] = useState<Question[]>(() => createRun(1));
@@ -95,7 +98,7 @@ export default function App() {
   const [dictionaryReturn, setDictionaryReturn] = useState<Screen>('home');
   const [resetOpen, setResetOpen] = useState(false);
   const historySession = useRef(`${Date.now()}-${Math.random()}`);
-  const question = questions[questionIndex];
+  const question = useMemo(() => questionForStyle(questions[questionIndex], data.settings.explanationStyle), [questions, questionIndex, data.settings.explanationStyle]);
   const memoryOptions: PairCount[] = compactMemory ? [6, 12] : [6, 12, 26];
   const resolved = feedback === 'correct' || feedback === 'revealed';
   const selectionLimit = Array.isArray(question.answer) ? question.answer.length : 1;
@@ -268,7 +271,7 @@ export default function App() {
     showScreen(destination);
   }
 
-  const stageTitle = stages.find(item => item.id === stage)?.title ?? '';
+  const stageTitle = displayStages.find(item => item.id === stage)?.title ?? '';
   const familyTabs = ['萬子', '筒子', '索子', '字牌'] as const;
   const memoryComplete = deck.every(card => card.matched);
 
@@ -305,7 +308,7 @@ export default function App() {
         <p className="muted">好きなステージから始められます。</p>
         <div className="category-tabs" aria-label="学習カテゴリ">{categories.map((item, index) => <button key={item.title} aria-pressed={category === index} className={category === index ? 'active' : ''} onClick={() => setCategory(index)}>{item.title}<small>{item.ids.length}レッスン</small></button>)}</div>
         <p className="category-description">{categories[category].description}</p>
-        <div className="stage-list">{stages.filter(item => categories[category].ids.includes(item.id)).map((item, index) => <button className="stage-card" key={item.id} onClick={() => startStage(item.id)}>
+        <div className="stage-list">{displayStages.filter(item => categories[category].ids.includes(item.id)).map((item, index) => <button className="stage-card" key={item.id} onClick={() => startStage(item.id)}>
           <span className="stage-number">{index + 1}</span>
           <span className="stage-info"><strong><ReadingText text={item.title} enabled={data.settings.furigana} /></strong><small><ReadingText text={item.summary} enabled={data.settings.furigana} /></small></span>
           <span className="stage-record">{data.stages[item.id].bestFirstTry ? `${data.stages[item.id].bestFirstTry}/5` : '—'}</span>
@@ -351,7 +354,7 @@ export default function App() {
         {question.kind === 'drill' && resolved && question.example && <div className="answer-example"><p>{question.example.label}</p><div className="example-groups">{question.example.groups.map((group, index) => <div key={index}>{group.map((id, i) => <TileImage key={`${id}-${i}`} tile={tileById[id]} helperNumber={data.settings.helperNumbers} />)}</div>)}</div></div>}
         {hintOpen && !resolved && question.hint && <div className="hint">{question.hint}</div>}
         {feedback && <div className={`feedback ${feedback}`} role="status"><strong>{feedback === 'correct' ? '正解' : feedback === 'revealed' ? '答えを確認（正解数には含めません）' : 'もう一度選んでください'}</strong>{resolved && <p><ReadingText text={question.explanation} enabled={data.settings.furigana} /></p>}</div>}
-        {resolved && question.kind === 'drill' && <UkeireDiagram question={question} helperNumbers={data.settings.helperNumbers} />}
+        {resolved && question.kind === 'drill' && <UkeireDiagram question={question} helperNumbers={data.settings.helperNumbers} childCopy={childCopy} />}
       </section>}
 
       {screen === 'result' && <section className="page-section result-section">
@@ -381,19 +384,30 @@ export default function App() {
         <div className="guide-grid">{tiles.filter(tile => tile.family === guideFamily).map(tile => <div className="guide-card" key={tile.id}><TileImage tile={tile} helperNumber={data.settings.helperNumbers} /><strong>{tile.label}</strong><TileReading tile={tile} enabled={data.settings.furigana} /></div>)}</div>
       </section>}
 
-      {screen === 'encyclopedia' && <Encyclopedia />}
+      {screen === 'encyclopedia' && <Encyclopedia explanationStyle={data.settings.explanationStyle} />}
 
       {screen === 'records' && <section className="page-section records-section">
         <p className="eyebrow">YOUR RECORD</p><h1>学習記録</h1>
         <div className="record-summary"><div><strong>{stages.reduce((sum, item) => sum + data.stages[item.id].attempts, 0)}</strong><span>挑戦した回数</span></div><div><strong>{stages.filter(item => data.stages[item.id].completed > 0).length}</strong><span>完了したステージ</span></div></div>
         <h2>ステージごとの記録</h2>
-        <div className="record-list">{stages.map(item => <div key={item.id} className="record-row"><span>{item.title}</span><strong>{data.stages[item.id].completed ? `最高 ${data.stages[item.id].bestFirstTry} / 5` : '記録なし'}</strong></div>)}</div>
+        <div className="record-list">{displayStages.map(item => <div key={item.id} className="record-row"><span>{item.title}</span><strong>{data.stages[item.id].completed ? `最高 ${data.stages[item.id].bestFirstTry} / 5` : '記録なし'}</strong></div>)}</div>
         <p className="muted">成績はこのブラウザに保存されます。</p>
         <Button onClick={() => navigate('stages')}>学習を始める</Button>
       </section>}
 
       {screen === 'settings' && <section className="page-section settings-section">
         <p className="eyebrow">PREFERENCES</p><h1>表示と記録の設定</h1>
+        <fieldset className="explanation-picker">
+          <legend>説明のスタイル</legend>
+          <p className="muted">問題文・ヒント・解説・辞典の説明を切り替えます。問題の難しさは変わりません。</p>
+          {([
+            ['child', 'やさしい説明', '具体例を使い、麻雀用語を一つずつ説明します。'],
+            ['adult', '用語を使った説明', '麻雀用語を使い、関連する条件もまとめて説明します。'],
+          ] as const).map(([style, label, description]) => <label className="setting-row" key={style}>
+            <span><strong>{label}</strong><small>{description}</small></span>
+            <input type="radio" name="explanation-style" value={style} checked={data.settings.explanationStyle === style} onChange={() => setData(current => ({ ...current, settings: { ...current.settings, explanationStyle: style } }))} />
+          </label>)}
+        </fieldset>
         <div className="theme-picker" role="group" aria-label="牌と画面の配色">
           {([['regular', '白牌・緑'], ['black', '黒牌・金']] as const).map(([theme, label]) => <button key={theme} className={data.settings.theme === theme ? 'active' : ''} aria-pressed={data.settings.theme === theme} onClick={() => setData(current => ({ ...current, settings: { ...current.settings, theme } }))}>
             <span className={`theme-preview theme-preview-${theme}`} aria-hidden="true"><span className="theme-preview-tile"><img src={tileUrl(tileById.man1, theme === 'black' ? 'Black' : 'Regular')} alt="" /></span></span>

@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:content": "node scripts/check-content.mjs",
+    "check:explanations": "node scripts/check-explanations.mjs",
     "check:drills": "node scripts/check-drills.mjs",
     "check:render": "node scripts/check-render.mjs",
     "check:domain": "node scripts/check-domain.mjs"

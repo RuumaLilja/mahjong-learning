@@ -2,6 +2,8 @@ import { useContext, useState } from 'react';
 import { terms, yaku, type Entry } from './data/encyclopedia';
 import { tileById, tileUrl, type TileId } from './domain/tiles';
 import { ThemeContext } from './theme';
+import { entryForStyle } from './data/childEncyclopedia';
+import type { ExplanationStyle } from './data/learningCopy';
 
 type Section = 'terms' | 'yaku';
 
@@ -34,7 +36,7 @@ function EntryCard({ entry, showHan }: { entry: Entry; showHan: boolean }) {
   </details>;
 }
 
-export default function Encyclopedia() {
+export default function Encyclopedia({ explanationStyle = 'child' }: { explanationStyle?: ExplanationStyle }) {
   const [section, setSection] = useState<Section>('terms');
   const [query, setQuery] = useState('');
   const [termCategory, setTermCategory] = useState('すべて');
@@ -42,7 +44,7 @@ export default function Encyclopedia() {
   const categories = ['すべて', '基本', '鳴き・アガリ', '手牌の進み方', '待ち', '点数・局'];
   const hanGroups = ['すべて', '1翻', '2翻', '3翻以上', '満貫', '役満'];
   const normalizedQuery = query.trim().toLocaleLowerCase('ja');
-  const entries = (section === 'terms' ? terms : yaku).filter(entry => {
+  const entries = (section === 'terms' ? terms : yaku).map(entry => entryForStyle(entry, explanationStyle)).filter(entry => {
     if (section === 'terms' && termCategory !== 'すべて' && entry.category !== termCategory) return false;
     if (section === 'yaku' && hanFilter !== 'すべて') {
       if (hanFilter === '3翻以上' ? !(entry.han?.startsWith('3翻') || entry.han?.startsWith('6翻')) : hanFilter === '役満' ? !entry.han?.includes('役満') : !entry.han?.startsWith(hanFilter)) return false;
@@ -62,7 +64,7 @@ export default function Encyclopedia() {
     <div className="dictionary-filters" aria-label="絞り込み">
       {(section === 'terms' ? categories : hanGroups).map(value => <button key={value} className={(section === 'terms' ? termCategory : hanFilter) === value ? 'active' : ''} aria-pressed={(section === 'terms' ? termCategory : hanFilter) === value} onClick={() => section === 'terms' ? setTermCategory(value) : setHanFilter(value)}>{value}</button>)}
     </div>
-    {section === 'yaku' && <p className="dictionary-note">雀魂の通常の四人麻雀で使う一般的な役を掲載。特殊ルールの役は含みません。門前限定の役は鳴くと成立しません。ドラは役ではありません。</p>}
+    {section === 'yaku' && <p className="dictionary-note">{explanationStyle === 'child' ? '一般的な四人麻雀の役を紹介します。「門前限定」は、他の人の捨てた牌をもらって組を作ると使えない役です。ドラは点数のボーナスで、役にはなりません。' : '雀魂の通常の四人麻雀で使う一般的な役を掲載。特殊ルールの役は含みません。門前限定の役は鳴くと成立しません。ドラは役ではありません。'}</p>}
     <p className="dictionary-count">{entries.length}件</p>
     <div className="dictionary-list">{entries.map(entry => <EntryCard key={entry.id} entry={entry} showHan={section === 'yaku'} />)}</div>
     {entries.length === 0 && <p className="dictionary-empty">見つかりませんでした。別の言葉で探してください。</p>}

@@ -107,6 +107,11 @@ ruby rt{font-size:.56em;font-weight:500;line-height:1}
 .discard-options{grid-template-columns:repeat(7,minmax(0,1fr));width:100%;max-width:536px;margin-inline:auto}
 .discard-options .option{width:100%;min-width:0;padding:3px 2px}
 .feedback p{white-space:pre-line}
+.explanation-picker{border:0;padding:0;margin:24px 0;min-width:0;display:grid;gap:12px}
+.explanation-picker legend{font-size:20px;font-weight:700;margin-bottom:8px}
+.explanation-picker>p{margin:0 0 4px;line-height:1.7}
+.explanation-picker .setting-row{cursor:pointer}
+.explanation-picker .setting-row small{line-height:1.7}
 @media(max-width:520px){.category-tabs button{font-size:13px}.stage-card{padding:14px 12px}.stage-number{width:34px;height:34px;flex-shrink:0}.hand-tiles{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.hand-tiles .tile-wrap{height:auto;width:100%}.drill-choice .tile-wrap{height:54px}.discard-options{grid-template-columns:repeat(5,minmax(0,1fr))}.discard-options .tile-wrap{height:48px}.drill-options .option{min-width:0}}
 
 .answer-example{margin-top:24px;padding:16px;background:#0b3832;border-radius:12px;font-size:13px}.example-groups{display:flex;flex-wrap:wrap;gap:16px}.example-groups>div{display:flex;gap:3px}.example-groups .tile-wrap{height:48px}
